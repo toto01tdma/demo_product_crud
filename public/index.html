@@ -198,6 +198,7 @@
       $.get(`/products/${id}`, function (product) {
         $('#productId').val(product._id);
         $('#productName').val(product.name);
+        $('#productPrice').val(product.price);
         $('#productDescription').val(product.description);
         $('#productType').val(product.type);
         $('#productShow').prop('checked', product.show);
@@ -214,6 +215,7 @@
     function clearForm() {
       $('#productId').val('');
       $('#productName').val('');
+      $('#productPrice').val('');
       $('#productDescription').val('');
       $('#productType').val('Phisical Product');
       $('#productShow').prop('checked', false);
