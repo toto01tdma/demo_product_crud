@@ -1,15 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const Product = require('../models/product');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
-// Create a new product
-router.post('/', async (req, res) => {
+// Set up multer storage
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'storages/product/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname)); // ใช้ path.extname เพื่อดึงนามสกุลไฟล์
+  }
+});
+
+const upload = multer({ storage: storage }).single('image');
+
+// Create a new product with image upload
+router.post('/', upload, async (req, res) => {
   const product = new Product({
     name: req.body.name,
     price: req.body.price,
     type: req.body.type,
-    show: req.body.show,
-    description: req.body.description
+    show: req.body.show === 'on',  // แปลงค่าเป็น Boolean
+    description: req.body.description,
+    image: req.file ? req.file.filename : null
   });
 
   try {
@@ -35,8 +51,8 @@ router.get('/:id', getProduct, (req, res) => {
   res.json(res.product);
 });
 
-// Update a product
-router.patch('/:id', getProduct, async (req, res) => {
+// Update a product with image upload
+router.patch('/:id', getProduct, upload, async (req, res) => {
   if (req.body.name != null) {
     res.product.name = req.body.name;
   }
@@ -50,7 +66,19 @@ router.patch('/:id', getProduct, async (req, res) => {
     res.product.type = req.body.type;
   }
   if (req.body.show != null) {
-    res.product.show = req.body.show;
+    res.product.show = req.body.show === 'on';  // แปลงค่าเป็น Boolean
+  }
+
+  if (req.file) {
+    // Delete old image if a new image is uploaded
+    if (res.product.image) {
+      fs.unlink(path.join('storages/product/', res.product.image), (err) => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
+    res.product.image = req.file.filename;
   }
 
   try {
@@ -64,6 +92,15 @@ router.patch('/:id', getProduct, async (req, res) => {
 // Delete a product
 router.delete('/:id', getProduct, async (req, res) => {
   try {
+    // Delete image from storage
+    if (res.product.image) {
+      fs.unlink(path.join('storages/product/', res.product.image), (err) => {
+        if (err) {
+          console.error(err);
+        }
+      });
+    }
+    
     await res.product.deleteOne(); // ใช้ deleteOne()
     res.json({ message: 'Deleted Product' });
   } catch (err) {
